@@ -14,6 +14,8 @@
 #define TARE_PIN 2
 #define THRASH_PIN 3
 
+#define DEBUG false
+
 bool red = false;
 bool green = false;
 bool blue = false;
@@ -49,7 +51,7 @@ void loop() {
   //calculates mass and acts upon it
   double mass, angle;
   getMass(exactVoltage, &mass, &angle);
-  //setLights(mass);
+  setLights(mass);
   updateSerial(exactVoltage, angle, mass, isStable(exactVoltage));
   delay(DELAY_TIME);
 }
@@ -115,25 +117,37 @@ boolean isStable(double voltage) {
 
 void updateSerial(double voltage, double angle, double mass, boolean isStable) {
   //just sends a bunch of nice info
-  /*char str[80];
+  #if DEBUG
+  char str[80];
   sprintf(
     str,
-    " g\nRed: %s, Green: %s, Blue: %s\n",
-    red ? "ON" : "OFF",
-    green ? "ON" : "OFF",
-    blue ? "ON" : "OFF"
-  );*/
+    " Red: %s, Green: %s, Blue: %s",
+    red ? " ON" : "OFF",
+    green ? " ON" : "OFF",
+    blue ? " ON" : "OFF"
+  );
+  #endif
   Serial.print(F("\nVoltage: "));
   Serial.print(voltage, 6);
   Serial.print(F(" V"));
-  Serial.print(F(",Angle: "));
-  Serial.print(mass, 6);
+  #if DEBUG
+  Serial.print(F(", Angle: "));
+  Serial.print(angle, 6);
   Serial.print(F(" rad"));
+  #endif
   Serial.print(F(", Mass: "));
-  Serial.print(mass, 6);
+  Serial.print(mass, 
+  #if DEBUG
+  6
+  #else
+  1
+  #endif
+  );
   Serial.print(F(" g"));
+  #if DEBUG
+  Serial.print(str);
+  #endif
   if (isStable) {
     Serial.print(F(" (stable)"));
   }
-  //Serial.print(str);
 }
