@@ -3,10 +3,12 @@
 #define BLUE_PIN 14
 #define INPUT_PIN A7
 
-#define ZERO_KG 2.390
-#define ONE_KG 4.017
+#define ZERO_KG 2.346
+#define ONE_KG 4.086
 
-#define PROP_CONSTANT 1000.0
+#define CAN_MASS 92.136
+
+#define PROP_CONSTANT 1125.732
 
 #define DELAY_TIME 20
 #define ROLL_LEN 500
@@ -78,11 +80,13 @@ void getMass(double voltage, double* mass, double* angle) {
   //equation
   *angle = (voltage - tareVoltageOffset) / (thrashVoltageOffset - tareVoltageOffset) * PI / 2;
 
-  double tempMass = sin(*angle) * propConstant;
+  double tempMass = sin(*angle) * propConstant - CAN_MASS;
   
   //keeps in mind bounds of allowed masses in case something goes really wrong
+  #if !DEBUG
   if (tempMass < 30) tempMass = 30;
   if (tempMass > 1000) tempMass = 1000;
+  #endif
   *mass = tempMass;
 }
 
