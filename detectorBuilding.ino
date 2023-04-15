@@ -3,15 +3,8 @@
 #define BLUE_PIN 14
 #define INPUT_PIN A7
 
-#define ZERO_KG 2.346
-#define ONE_KG 4.086
-
-#define CAN_MASS 92.136
-
-#define PROP_CONSTANT 1125.732
-
 #define DELAY_TIME 20
-#define ROLL_LEN 500
+#define ROLL_LEN 50
 
 #define TARE_PIN 2
 #define THRASH_PIN 3
@@ -22,10 +15,9 @@ bool red = false;
 bool green = false;
 bool blue = false;
 
-double tareVoltageOffset = ZERO_KG;
-double thrashVoltageOffset = ONE_KG;
-
-double propConstant = PROP_CONSTANT;
+double averageVoltage;
+double voltagesRecorded[ROLL_LEN];
+int rollingIndex = 0;
 
 double lastBrokenVoltage;
 unsigned long millisAtLastBreak;
@@ -39,7 +31,7 @@ void setup() {
   pinMode(INPUT_PIN, INPUT);
   pinMode(TARE_PIN, INPUT_PULLUP);
   pinMode(THRASH_PIN, INPUT_PULLUP);
-  analogReference(DEFAULT);
+  analogReference(INTERNAL);
 }
 
 void loop() {
@@ -47,14 +39,11 @@ void loop() {
   double exactVoltage;
   getVoltage(&exactVoltage);
 
-  //checks if it should tare or "thrash" the voltage
-  tareThrash(exactVoltage);
-
   //calculates mass and acts upon it
   double mass, angle;
-  getMass(exactVoltage, &mass, &angle);
+  getMass(averageVoltage, &mass, &angle);
   setLights(mass);
-  updateSerial(exactVoltage, angle, mass, isStable(exactVoltage));
+  updateSerial(exactVoltage, angle, mass, isStable(exactVoltage), averageVoltage);
   delay(DELAY_TIME);
 }
 
@@ -78,9 +67,10 @@ void setLights(double mass) {
 
 void getMass(double voltage, double* mass, double* angle) {
   //equation
-  *angle = (voltage - tareVoltageOffset) / (thrashVoltageOffset - tareVoltageOffset) * PI / 2;
+  double tempMass = 1237.04 * sin(0.995074 * voltage + 0.699121) - 150;
 
-  double tempMass = sin(*angle) * propConstant - CAN_MASS;
+  //good enough for nows
+  *angle = (voltage - 2.454) / (0.875 - 2.454) * PI/2;
   
   //keeps in mind bounds of allowed masses in case something goes really wrong
   #if !DEBUG
@@ -95,17 +85,11 @@ void getVoltage(double* exact) {
   int inputIntVoltage = analogRead(INPUT_PIN);
 
   //returns by reference the rolling average and exact voltage
-  *exact = inputIntVoltage / 1023.0 * 5.00;
-}
+  *exact = inputIntVoltage / 1023.0 * 2.56;
 
-void tareThrash(double averageVoltage) {
-  if (digitalRead(TARE_PIN) == LOW) {
-    tareVoltageOffset = averageVoltage;
-  }
-
-  if (digitalRead(THRASH_PIN) == LOW) {
-    thrashVoltageOffset = averageVoltage;
-  }
+  averageVoltage += (*exact - voltagesRecorded[rollingIndex]) / ROLL_LEN;
+  voltagesRecorded[rollingIndex] = *exact;
+  rollingIndex = (rollingIndex + 1) % ROLL_LEN;
 }
 
 boolean isStable(double voltage) {
@@ -119,7 +103,7 @@ boolean isStable(double voltage) {
   return (millis() - millisAtLastBreak > 3000);
 }
 
-void updateSerial(double voltage, double angle, double mass, boolean isStable) {
+void updateSerial(double voltage, double angle, double mass, boolean isStable, double asymptotal) {
   //just sends a bunch of nice info
   #if DEBUG
   char str[80];
@@ -132,7 +116,7 @@ void updateSerial(double voltage, double angle, double mass, boolean isStable) {
   );
   #endif
   Serial.print(F("\nVoltage: "));
-  Serial.print(voltage, 6);
+  Serial.print(asymptotal, 6);
   Serial.print(F(" V"));
   #if DEBUG
   Serial.print(F(", Angle: "));
