@@ -67,7 +67,7 @@ void setLights(double mass) {
 
 void getMass(double voltage, double* mass, double* angle) {
   //equation
-  double tempMass = 1237.04 * sin(0.995074 * voltage + 0.699121) - 150;
+  double tempMass = 1239.64 * sin(0.988683 * voltage + 0.71261) - 150.32;
 
   //good enough for nows
   *angle = (voltage - 2.454) / (0.875 - 2.454) * PI/2;
